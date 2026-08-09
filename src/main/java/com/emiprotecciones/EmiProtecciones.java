@@ -4,30 +4,29 @@ import com.mojang.serialization.MapCodec;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.Registry;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
-import net.minecraft.world.level.block.RenderShape;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityTicker;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.BlockRenderType;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.BlockWithEntity;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.BlockEntityTicker;
+import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoBlockEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
@@ -44,32 +43,32 @@ public final class EmiProtecciones implements ModInitializer {
     public static final String MOD_ID = "emiprotecciones";
 
     public static final ProtectionCoreBlock PROTECTION_CORE = new ProtectionCoreBlock(
-            BlockBehaviour.Properties.of().strength(4.0F, 1200.0F).noOcclusion()
+            AbstractBlock.Settings.create().strength(4.0F, 1200.0F).nonOpaque()
     );
 
     public static final Item PROTECTION_CORE_ITEM =
-            new BlockItem(PROTECTION_CORE, new Item.Properties());
+            new BlockItem(PROTECTION_CORE, new Item.Settings());
 
     public static final BlockEntityType<ProtectionCoreBlockEntity> PROTECTION_CORE_BLOCK_ENTITY =
-            BlockEntityType.Builder.of(ProtectionCoreBlockEntity::new, PROTECTION_CORE).build(null);
+            BlockEntityType.Builder.create(ProtectionCoreBlockEntity::new, PROTECTION_CORE).build(null);
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    public static Identifier id(String path) {
+        return Identifier.of(MOD_ID, path);
     }
 
     @Override
     public void onInitialize() {
-        Registry.register(BuiltInRegistries.BLOCK, id("protection_core"), PROTECTION_CORE);
-        Registry.register(BuiltInRegistries.ITEM, id("protection_core"), PROTECTION_CORE_ITEM);
-        Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE, id("protection_core"), PROTECTION_CORE_BLOCK_ENTITY);
+        Registry.register(Registries.BLOCK, id("protection_core"), PROTECTION_CORE);
+        Registry.register(Registries.ITEM, id("protection_core"), PROTECTION_CORE_ITEM);
+        Registry.register(Registries.BLOCK_ENTITY_TYPE, id("protection_core"), PROTECTION_CORE_BLOCK_ENTITY);
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
-            if (state.is(PROTECTION_CORE)
+            if (state.isOf(PROTECTION_CORE)
                     && blockEntity instanceof ProtectionCoreBlockEntity core
                     && !core.canBreak(player)) {
-                if (!world.isClientSide) {
-                    player.displayClientMessage(
-                            Component.literal("§cEsta Pokébola de Protección pertenece a otro jugador."),
+                if (!world.isClient) {
+                    player.sendMessage(
+                            Text.literal("§cEsta Pokébola de Protección pertenece a otro jugador."),
                             true
                     );
                 }
@@ -82,46 +81,48 @@ public final class EmiProtecciones implements ModInitializer {
     public static final class Client implements ClientModInitializer {
         @Override
         public void onInitializeClient() {
-            BlockEntityRenderers.register(
+            BlockEntityRendererFactories.register(
                     PROTECTION_CORE_BLOCK_ENTITY,
                     context -> new ProtectionCoreRenderer()
             );
         }
     }
 
-    public static final class ProtectionCoreBlock extends BaseEntityBlock {
-        public ProtectionCoreBlock(Properties properties) {
-            super(properties);
+    public static final class ProtectionCoreBlock extends BlockWithEntity {
+        public static final MapCodec<ProtectionCoreBlock> CODEC = createCodec(ProtectionCoreBlock::new);
+
+        public ProtectionCoreBlock(Settings settings) {
+            super(settings);
         }
 
         @Override
-        protected MapCodec<? extends BaseEntityBlock> codec() {
-            return null;
+        protected MapCodec<? extends BlockWithEntity> getCodec() {
+            return CODEC;
         }
 
         @Override
-        public RenderShape getRenderShape(BlockState state) {
-            return RenderShape.ENTITYBLOCK_ANIMATED;
+        public BlockRenderType getRenderType(BlockState state) {
+            return BlockRenderType.ENTITYBLOCK_ANIMATED;
         }
 
         @Nullable
         @Override
-        public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
             return new ProtectionCoreBlockEntity(pos, state);
         }
 
         @Nullable
         @Override
         public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
-                Level level,
+                World world,
                 BlockState state,
                 BlockEntityType<T> type
         ) {
-            if (level.isClientSide) {
+            if (world.isClient) {
                 return null;
             }
 
-            return createTickerHelper(
+            return validateTicker(
                     type,
                     PROTECTION_CORE_BLOCK_ENTITY,
                     ProtectionCoreBlockEntity::serverTick
@@ -129,22 +130,22 @@ public final class EmiProtecciones implements ModInitializer {
         }
 
         @Override
-        public void setPlacedBy(
-                Level level,
+        public void onPlaced(
+                World world,
                 BlockPos pos,
                 BlockState state,
                 @Nullable LivingEntity placer,
                 ItemStack stack
         ) {
-            super.setPlacedBy(level, pos, state, placer, stack);
+            super.onPlaced(world, pos, state, placer, stack);
 
-            if (!level.isClientSide
-                    && placer instanceof Player player
-                    && level.getBlockEntity(pos) instanceof ProtectionCoreBlockEntity core) {
-                core.setOwner(player.getUUID());
+            if (!world.isClient
+                    && placer instanceof PlayerEntity player
+                    && world.getBlockEntity(pos) instanceof ProtectionCoreBlockEntity core) {
+                core.setOwner(player.getUuid());
                 core.startPreview();
-                player.displayClientMessage(
-                        Component.literal("§d✦ Protección preparada §7• §fÁrea visual: §d21×21"),
+                player.sendMessage(
+                        Text.literal("§d✦ Protección preparada §7• §fÁrea visual: §d21×21"),
                         false
                 );
             }
@@ -165,62 +166,62 @@ public final class EmiProtecciones implements ModInitializer {
 
         public void setOwner(UUID owner) {
             this.owner = owner;
-            setChanged();
+            markDirty();
         }
 
-        public boolean canBreak(Player player) {
-            return owner == null || owner.equals(player.getUUID()) || player.isCreative();
+        public boolean canBreak(PlayerEntity player) {
+            return owner == null || owner.equals(player.getUuid()) || player.isCreative();
         }
 
         public void startPreview() {
             previewTicks = 160;
-            setChanged();
+            markDirty();
         }
 
         public static void serverTick(
-                Level level,
+                World world,
                 BlockPos pos,
                 BlockState state,
                 ProtectionCoreBlockEntity core
         ) {
-            if (!(level instanceof ServerLevel serverLevel) || core.previewTicks <= 0) {
+            if (!(world instanceof ServerWorld serverWorld) || core.previewTicks <= 0) {
                 return;
             }
 
             if (core.previewTicks % 10 == 0) {
-                spawnBoundary(serverLevel, pos);
+                spawnBoundary(serverWorld, pos);
             }
             core.previewTicks--;
         }
 
-        private static void spawnBoundary(ServerLevel level, BlockPos center) {
+        private static void spawnBoundary(ServerWorld world, BlockPos center) {
             final int radius = 10;
             final double y = center.getY() + 1.05;
 
             for (int offset = -radius; offset <= radius; offset += 2) {
-                spawn(level, center.getX() + offset + 0.5, y, center.getZ() - radius + 0.5);
-                spawn(level, center.getX() + offset + 0.5, y, center.getZ() + radius + 0.5);
-                spawn(level, center.getX() - radius + 0.5, y, center.getZ() + offset + 0.5);
-                spawn(level, center.getX() + radius + 0.5, y, center.getZ() + offset + 0.5);
+                spawn(world, center.getX() + offset + 0.5, y, center.getZ() - radius + 0.5);
+                spawn(world, center.getX() + offset + 0.5, y, center.getZ() + radius + 0.5);
+                spawn(world, center.getX() - radius + 0.5, y, center.getZ() + offset + 0.5);
+                spawn(world, center.getX() + radius + 0.5, y, center.getZ() + offset + 0.5);
             }
         }
 
-        private static void spawn(ServerLevel level, double x, double y, double z) {
-            level.sendParticles(ParticleTypes.END_ROD, x, y, z, 1, 0.02, 0.08, 0.02, 0.0);
+        private static void spawn(ServerWorld world, double x, double y, double z) {
+            world.spawnParticles(ParticleTypes.END_ROD, x, y, z, 1, 0.02, 0.08, 0.02, 0.0);
         }
 
         @Override
-        protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            super.saveAdditional(tag, registries);
+        protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+            super.writeNbt(nbt, registries);
             if (owner != null) {
-                tag.putUUID("Owner", owner);
+                nbt.putUuid("Owner", owner);
             }
         }
 
         @Override
-        protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            super.loadAdditional(tag, registries);
-            owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+        protected void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+            super.readNbt(nbt, registries);
+            owner = nbt.containsUuid("Owner") ? nbt.getUuid("Owner") : null;
         }
 
         @Override
@@ -236,15 +237,7 @@ public final class EmiProtecciones implements ModInitializer {
 
     public static final class ProtectionCoreModel extends DefaultedBlockGeoModel<ProtectionCoreBlockEntity> {
         public ProtectionCoreModel() {
-            super(ResourceLocation.fromNamespaceAndPath(MOD_ID, "protection_core"));
-        }
-
-        @Override
-        public RenderType getRenderType(
-                ProtectionCoreBlockEntity animatable,
-                ResourceLocation texture
-        ) {
-            return RenderType.entityCutoutNoCull(getTextureResource(animatable));
+            super(Identifier.of(MOD_ID, "protection_core"));
         }
     }
 
