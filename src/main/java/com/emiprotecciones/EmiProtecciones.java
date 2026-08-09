@@ -1,13 +1,9 @@
 package com.emiprotecciones;
 
 import com.mojang.serialization.MapCodec;
-import io.github.flemmli97.flan.claim.Claim;
-import io.github.flemmli97.flan.claim.ClaimStorage;
-import io.github.flemmli97.flan.player.ClaimMode;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.luckperms.api.LuckPermsProvider;
-import net.luckperms.api.model.user.User;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
@@ -161,13 +157,12 @@ public final class EmiProtecciones implements ModInitializer {
     }
 
     public static boolean canUseEmiTier(ServerPlayerEntity player) {
-        try {
-            User user = LuckPermsProvider.get().getUserManager().getUser(player.getUuid());
-            if (user != null && user.getCachedData().getPermissionData().checkPermission(EMI_PERMISSION).asBoolean()) {
-                return true;
+        if (FabricLoader.getInstance().isModLoaded("luckperms")) {
+            try {
+                return PermissionBridge.hasPermission(player, EMI_PERMISSION) || player.hasPermissionLevel(4);
+            } catch (RuntimeException | LinkageError ignored) {
+                // If the LuckPerms bridge cannot initialize, OP remains a safe fallback.
             }
-        } catch (IllegalStateException | NoClassDefFoundError ignored) {
-            // LuckPerms is optional at code level; OP remains a safe fallback.
         }
         return player.hasPermissionLevel(4);
     }
@@ -241,6 +236,15 @@ public final class EmiProtecciones implements ModInitializer {
                 return;
             }
 
+            if (!FabricLoader.getInstance().isModLoaded("flan")) {
+                player.sendMessage(Text.literal("§c✦ EmiProtecciones necesita Flan instalado en el servidor."), false);
+                serverWorld.removeBlock(pos, false);
+                if (!player.isCreative()) {
+                    player.giveItemStack(new ItemStack(state.getBlock().asItem()));
+                }
+                return;
+            }
+
             core.setOwner(player.getUuid());
 
             if (!core.createFlanClaim(serverWorld, player)) {
@@ -305,34 +309,20 @@ public final class EmiProtecciones implements ModInitializer {
         }
 
         public boolean createFlanClaim(ServerWorld world, ServerPlayerEntity player) {
-            ProtectionTier tier = getTier();
-            int radius = tier.radius();
-
-            BlockPos from = new BlockPos(pos.getX() - radius, pos.getY(), pos.getZ() - radius);
-            BlockPos to = new BlockPos(pos.getX() + radius, pos.getY(), pos.getZ() + radius);
-
-            ClaimStorage storage = ClaimStorage.get(world);
-            Claim claim = storage.createAdminClaim(from, to, world, false);
-            if (claim == null) {
+            UUID created = FlanBridge.createClaim(world, pos, getTier(), player);
+            if (created == null) {
                 return false;
             }
-
-            storage.transferOwner(claim, player.getUuid());
-            claim.setClaimName("Protección " + tier.displayName());
-            setFlanClaimId(claim.getClaimID());
+            setFlanClaimId(created);
             return true;
         }
 
         public void removeFlanClaim(ServerWorld world) {
-            if (flanClaimId == null) {
+            if (flanClaimId == null || !FabricLoader.getInstance().isModLoaded("flan")) {
                 return;
             }
 
-            ClaimStorage storage = ClaimStorage.get(world);
-            Claim claim = storage.getFromUUID(flanClaimId);
-            if (claim != null) {
-                storage.deleteClaim(claim, true, ClaimMode.DEFAULT, world);
-            }
+            FlanBridge.removeClaim(world, flanClaimId);
             flanClaimId = null;
             markDirty();
         }
