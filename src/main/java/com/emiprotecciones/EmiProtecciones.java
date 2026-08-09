@@ -1,7 +1,11 @@
 package com.emiprotecciones;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.serialization.MapCodec;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.AbstractBlock;
@@ -22,6 +26,8 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -141,11 +147,153 @@ public final class EmiProtecciones implements ModInitializer {
                 core.removeFlanClaim(serverWorld);
             }
         });
+
+        registerManagementCommands();
     }
 
     private static void register(String path, Block block, Item item) {
         Registry.register(Registries.BLOCK, id(path), block);
         Registry.register(Registries.ITEM, id(path), item);
+    }
+
+    private static void registerManagementCommands() {
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
+                CommandManager.literal("emiprotecciones")
+                        .then(CommandManager.literal("manage")
+                                .then(CommandManager.argument("pos", StringArgumentType.word())
+                                        .then(CommandManager.literal("add")
+                                                .then(CommandManager.argument("player", StringArgumentType.word())
+                                                        .executes(EmiProtecciones::addGuest)))
+                                        .then(CommandManager.literal("remove")
+                                                .then(CommandManager.argument("player", StringArgumentType.word())
+                                                        .executes(EmiProtecciones::removeGuest)))
+                                        .then(CommandManager.literal("guestperm")
+                                                .then(CommandManager.argument("permission", StringArgumentType.word())
+                                                        .then(CommandManager.argument("allow", BoolArgumentType.bool())
+                                                                .executes(EmiProtecciones::setGuestPermission))))
+                                        .then(CommandManager.literal("globalperm")
+                                                .then(CommandManager.argument("permission", StringArgumentType.word())
+                                                        .then(CommandManager.argument("allow", BoolArgumentType.bool())
+                                                                .executes(EmiProtecciones::setGlobalPermission))))
+                                        .then(CommandManager.literal("preview")
+                                                .executes(EmiProtecciones::previewClaim))))
+        ));
+    }
+
+    private static int addGuest(CommandContext<ServerCommandSource> context) {
+        ManagedCore managed = managedCore(context);
+        if (managed == null) return 0;
+
+        String name = StringArgumentType.getString(context, "player");
+        boolean ok = FlanBridge.addGuest(managed.world(), managed.core().getFlanClaimId(), managed.player(), name);
+        managed.player().sendMessage(
+                Text.literal(ok
+                        ? "§d✦ " + name + " §fahora está permitido en tu protección."
+                        : "§c✦ No se pudo añadir a " + name + ". Debe estar conectado."),
+                false
+        );
+        return ok ? 1 : 0;
+    }
+
+    private static int removeGuest(CommandContext<ServerCommandSource> context) {
+        ManagedCore managed = managedCore(context);
+        if (managed == null) return 0;
+
+        String name = StringArgumentType.getString(context, "player");
+        boolean ok = FlanBridge.removeGuest(managed.world(), managed.core().getFlanClaimId(), managed.player(), name);
+        managed.player().sendMessage(
+                Text.literal(ok
+                        ? "§d✦ " + name + " §fya no está permitido en tu protección."
+                        : "§c✦ No se pudo quitar a " + name + ". Debe estar conectado."),
+                false
+        );
+        return ok ? 1 : 0;
+    }
+
+    private static int setGuestPermission(CommandContext<ServerCommandSource> context) {
+        ManagedCore managed = managedCore(context);
+        if (managed == null) return 0;
+
+        String permission = StringArgumentType.getString(context, "permission");
+        boolean allow = BoolArgumentType.getBool(context, "allow");
+        boolean ok = FlanBridge.setGuestPermission(
+                managed.world(), managed.core().getFlanClaimId(), managed.player(), permission, allow
+        );
+        managed.player().sendMessage(
+                Text.literal(ok
+                        ? "§d✦ Permiso actualizado: §f" + permission + " §7→ " + (allow ? "§aPERMITIR" : "§cBLOQUEAR")
+                        : "§c✦ No se pudo modificar ese permiso."),
+                true
+        );
+        return ok ? 1 : 0;
+    }
+
+    private static int setGlobalPermission(CommandContext<ServerCommandSource> context) {
+        ManagedCore managed = managedCore(context);
+        if (managed == null) return 0;
+
+        String permission = StringArgumentType.getString(context, "permission");
+        boolean allow = BoolArgumentType.getBool(context, "allow");
+        boolean ok = FlanBridge.setGlobalPermission(
+                managed.world(), managed.core().getFlanClaimId(), managed.player(), permission, allow
+        );
+        managed.player().sendMessage(
+                Text.literal(ok
+                        ? "§d✦ Regla de parcela actualizada: §f" + permission + " §7→ " + (allow ? "§aACTIVA" : "§cBLOQUEADA")
+                        : "§c✦ No se pudo modificar esa regla."),
+                true
+        );
+        return ok ? 1 : 0;
+    }
+
+    private static int previewClaim(CommandContext<ServerCommandSource> context) {
+        ManagedCore managed = managedCore(context);
+        if (managed == null) return 0;
+        managed.core().startPreview();
+        managed.player().sendMessage(Text.literal("§d✦ Mostrando límites de la protección."), true);
+        return 1;
+    }
+
+    @Nullable
+    private static ManagedCore managedCore(CommandContext<ServerCommandSource> context) {
+        if (!(context.getSource().getEntity() instanceof ServerPlayerEntity player)) {
+            return null;
+        }
+
+        String raw = StringArgumentType.getString(context, "pos");
+        String[] parts = raw.split(",");
+        if (parts.length != 3) {
+            player.sendMessage(Text.literal("§cPosición de protección inválida."), true);
+            return null;
+        }
+
+        try {
+            BlockPos pos = new BlockPos(
+                    Integer.parseInt(parts[0]),
+                    Integer.parseInt(parts[1]),
+                    Integer.parseInt(parts[2])
+            );
+            ServerWorld world = context.getSource().getWorld();
+            if (!(world.getBlockEntity(pos) instanceof ProtectionCoreBlockEntity core)) {
+                player.sendMessage(Text.literal("§cNo hay una protección válida en esa posición."), true);
+                return null;
+            }
+            if (!core.canManage(player)) {
+                player.sendMessage(Text.literal("§cSolo el propietario puede administrar esta protección."), true);
+                return null;
+            }
+            if (core.getFlanClaimId() == null) {
+                player.sendMessage(Text.literal("§cEsta protección no tiene un claim de Flan asociado."), true);
+                return null;
+            }
+            return new ManagedCore(world, player, core);
+        } catch (NumberFormatException ignored) {
+            player.sendMessage(Text.literal("§cPosición de protección inválida."), true);
+            return null;
+        }
+    }
+
+    private record ManagedCore(ServerWorld world, ServerPlayerEntity player, ProtectionCoreBlockEntity core) {
     }
 
     public static ProtectionTier tierOf(Block block) {
@@ -306,6 +454,13 @@ public final class EmiProtecciones implements ModInitializer {
 
         public boolean canBreak(PlayerEntity player) {
             return owner == null || owner.equals(player.getUuid()) || player.isCreative();
+        }
+
+        public boolean canManage(ServerPlayerEntity player) {
+            return owner == null
+                    || owner.equals(player.getUuid())
+                    || player.isCreative()
+                    || player.hasPermissionLevel(4);
         }
 
         public boolean createFlanClaim(ServerWorld world, ServerPlayerEntity player) {
