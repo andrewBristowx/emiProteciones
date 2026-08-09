@@ -20,6 +20,14 @@ public final class EmiProteccionesClient implements ClientModInitializer {
         public ProtectionCoreModel() {
             super(Identifier.of(EmiProtecciones.MOD_ID, "protection_core"));
         }
+
+        @Override
+        public Identifier getTextureResource(EmiProtecciones.ProtectionCoreBlockEntity core) {
+            return Identifier.of(
+                    EmiProtecciones.MOD_ID,
+                    "textures/block/" + core.getTier().textureName() + ".png"
+            );
+        }
     }
 
     public static final class ProtectionCoreRenderer
