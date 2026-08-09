@@ -1,9 +1,15 @@
 package com.emiprotecciones;
 
 import com.mojang.serialization.MapCodec;
+import io.github.flemmli97.flan.claim.Claim;
+import io.github.flemmli97.flan.claim.ClaimStorage;
+import io.github.flemmli97.flan.player.ClaimMode;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
 import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
@@ -20,6 +26,7 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -37,16 +44,73 @@ import java.util.UUID;
 
 public final class EmiProtecciones implements ModInitializer {
     public static final String MOD_ID = "emiprotecciones";
+    public static final String EMI_PERMISSION = "emiprotecciones.tier.emi";
 
-    public static final ProtectionCoreBlock PROTECTION_CORE = new ProtectionCoreBlock(
-            AbstractBlock.Settings.create().strength(4.0F, 1200.0F).nonOpaque()
-    );
+    public enum ProtectionTier {
+        BASIC("basic", "Básica", 10, "protection_core"),
+        ADVANCED("advanced", "Avanzada", 15, "protection_core_advanced"),
+        EPIC("epic", "Épica", 20, "protection_core_epic"),
+        LEGENDARY("legendary", "Legendaria", 30, "protection_core_legendary"),
+        EMI("emi", "Emi", 60, "protection_core_emi");
 
-    public static final Item PROTECTION_CORE_ITEM =
-            new BlockItem(PROTECTION_CORE, new Item.Settings());
+        private final String id;
+        private final String displayName;
+        private final int radius;
+        private final String textureName;
+
+        ProtectionTier(String id, String displayName, int radius, String textureName) {
+            this.id = id;
+            this.displayName = displayName;
+            this.radius = radius;
+            this.textureName = textureName;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        public String displayName() {
+            return displayName;
+        }
+
+        public int radius() {
+            return radius;
+        }
+
+        public int size() {
+            return radius * 2 + 1;
+        }
+
+        public String textureName() {
+            return textureName;
+        }
+    }
+
+    private static AbstractBlock.Settings coreSettings() {
+        return AbstractBlock.Settings.create().strength(4.0F, 1200.0F).nonOpaque();
+    }
+
+    public static final ProtectionCoreBlock PROTECTION_CORE = new ProtectionCoreBlock(coreSettings());
+    public static final ProtectionCoreBlock PROTECTION_CORE_ADVANCED = new ProtectionCoreBlock(coreSettings());
+    public static final ProtectionCoreBlock PROTECTION_CORE_EPIC = new ProtectionCoreBlock(coreSettings());
+    public static final ProtectionCoreBlock PROTECTION_CORE_LEGENDARY = new ProtectionCoreBlock(coreSettings());
+    public static final ProtectionCoreBlock PROTECTION_CORE_EMI = new ProtectionCoreBlock(coreSettings());
+
+    public static final Item PROTECTION_CORE_ITEM = new BlockItem(PROTECTION_CORE, new Item.Settings());
+    public static final Item PROTECTION_CORE_ADVANCED_ITEM = new BlockItem(PROTECTION_CORE_ADVANCED, new Item.Settings());
+    public static final Item PROTECTION_CORE_EPIC_ITEM = new BlockItem(PROTECTION_CORE_EPIC, new Item.Settings());
+    public static final Item PROTECTION_CORE_LEGENDARY_ITEM = new BlockItem(PROTECTION_CORE_LEGENDARY, new Item.Settings());
+    public static final Item PROTECTION_CORE_EMI_ITEM = new BlockItem(PROTECTION_CORE_EMI, new Item.Settings());
 
     public static final BlockEntityType<ProtectionCoreBlockEntity> PROTECTION_CORE_BLOCK_ENTITY =
-            BlockEntityType.Builder.create(ProtectionCoreBlockEntity::new, PROTECTION_CORE).build(null);
+            BlockEntityType.Builder.create(
+                    ProtectionCoreBlockEntity::new,
+                    PROTECTION_CORE,
+                    PROTECTION_CORE_ADVANCED,
+                    PROTECTION_CORE_EPIC,
+                    PROTECTION_CORE_LEGENDARY,
+                    PROTECTION_CORE_EMI
+            ).build(null);
 
     public static Identifier id(String path) {
         return Identifier.of(MOD_ID, path);
@@ -54,24 +118,58 @@ public final class EmiProtecciones implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        Registry.register(Registries.BLOCK, id("protection_core"), PROTECTION_CORE);
-        Registry.register(Registries.ITEM, id("protection_core"), PROTECTION_CORE_ITEM);
+        register("protection_core", PROTECTION_CORE, PROTECTION_CORE_ITEM);
+        register("protection_core_advanced", PROTECTION_CORE_ADVANCED, PROTECTION_CORE_ADVANCED_ITEM);
+        register("protection_core_epic", PROTECTION_CORE_EPIC, PROTECTION_CORE_EPIC_ITEM);
+        register("protection_core_legendary", PROTECTION_CORE_LEGENDARY, PROTECTION_CORE_LEGENDARY_ITEM);
+        register("protection_core_emi", PROTECTION_CORE_EMI, PROTECTION_CORE_EMI_ITEM);
         Registry.register(Registries.BLOCK_ENTITY_TYPE, id("protection_core"), PROTECTION_CORE_BLOCK_ENTITY);
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
-            if (state.isOf(PROTECTION_CORE)
+            if (state.getBlock() instanceof ProtectionCoreBlock
                     && blockEntity instanceof ProtectionCoreBlockEntity core
                     && !core.canBreak(player)) {
                 if (!world.isClient) {
-                    player.sendMessage(
-                            Text.literal("§cEsta Pokébola de Protección pertenece a otro jugador."),
-                            true
-                    );
+                    player.sendMessage(Text.literal("§cEsta protección pertenece a otro jugador."), true);
                 }
                 return false;
             }
             return true;
         });
+
+        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
+            if (!world.isClient
+                    && world instanceof ServerWorld serverWorld
+                    && state.getBlock() instanceof ProtectionCoreBlock
+                    && blockEntity instanceof ProtectionCoreBlockEntity core) {
+                core.removeFlanClaim(serverWorld);
+            }
+        });
+    }
+
+    private static void register(String path, Block block, Item item) {
+        Registry.register(Registries.BLOCK, id(path), block);
+        Registry.register(Registries.ITEM, id(path), item);
+    }
+
+    public static ProtectionTier tierOf(Block block) {
+        if (block == PROTECTION_CORE_ADVANCED) return ProtectionTier.ADVANCED;
+        if (block == PROTECTION_CORE_EPIC) return ProtectionTier.EPIC;
+        if (block == PROTECTION_CORE_LEGENDARY) return ProtectionTier.LEGENDARY;
+        if (block == PROTECTION_CORE_EMI) return ProtectionTier.EMI;
+        return ProtectionTier.BASIC;
+    }
+
+    public static boolean canUseEmiTier(ServerPlayerEntity player) {
+        try {
+            User user = LuckPermsProvider.get().getUserManager().getUser(player.getUuid());
+            if (user != null && user.getCachedData().getPermissionData().checkPermission(EMI_PERMISSION).asBoolean()) {
+                return true;
+            }
+        } catch (IllegalStateException | NoClassDefFoundError ignored) {
+            // LuckPerms is optional at code level; OP remains a safe fallback.
+        }
+        return player.hasPermissionLevel(4);
     }
 
     public static final class ProtectionCoreBlock extends BlockWithEntity {
@@ -125,29 +223,67 @@ public final class EmiProtecciones implements ModInitializer {
         ) {
             super.onPlaced(world, pos, state, placer, stack);
 
-            if (!world.isClient
-                    && placer instanceof PlayerEntity player
-                    && world.getBlockEntity(pos) instanceof ProtectionCoreBlockEntity core) {
-                core.setOwner(player.getUuid());
-                core.startPreview();
+            if (world.isClient
+                    || !(world instanceof ServerWorld serverWorld)
+                    || !(placer instanceof ServerPlayerEntity player)
+                    || !(world.getBlockEntity(pos) instanceof ProtectionCoreBlockEntity core)) {
+                return;
+            }
+
+            ProtectionTier tier = core.getTier();
+
+            if (tier == ProtectionTier.EMI && !canUseEmiTier(player)) {
+                player.sendMessage(Text.literal("§c✦ La Protección Emi es exclusiva de Emi / administración."), false);
+                serverWorld.removeBlock(pos, false);
+                if (!player.isCreative()) {
+                    player.giveItemStack(new ItemStack(state.getBlock().asItem()));
+                }
+                return;
+            }
+
+            core.setOwner(player.getUuid());
+
+            if (!core.createFlanClaim(serverWorld, player)) {
                 player.sendMessage(
-                        Text.literal("§d✦ Protección preparada §7• §fÁrea visual: §d21×21"),
+                        Text.literal("§c✦ No se pudo crear la protección: el área se cruza con otra protección."),
                         false
                 );
+                serverWorld.removeBlock(pos, false);
+                if (!player.isCreative()) {
+                    player.giveItemStack(new ItemStack(state.getBlock().asItem()));
+                }
+                return;
             }
+
+            core.startPreview();
+            player.sendMessage(
+                    Text.literal(
+                            "§d✦ Protección " + tier.displayName()
+                                    + " creada §7• §fÁrea: §d" + tier.size() + "×" + tier.size()
+                    ),
+                    false
+            );
         }
     }
 
     public static final class ProtectionCoreBlockEntity extends BlockEntity implements GeoBlockEntity {
-        private static final RawAnimation IDLE =
-                RawAnimation.begin().thenLoop("animation.protection_core.idle");
+        private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("animation.protection_core.idle");
 
         private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
         private UUID owner;
+        private UUID flanClaimId;
         private int previewTicks;
 
         public ProtectionCoreBlockEntity(BlockPos pos, BlockState state) {
             super(PROTECTION_CORE_BLOCK_ENTITY, pos, state);
+        }
+
+        public ProtectionTier getTier() {
+            return tierOf(getCachedState().getBlock());
+        }
+
+        public UUID getOwner() {
+            return owner;
         }
 
         public void setOwner(UUID owner) {
@@ -155,8 +291,50 @@ public final class EmiProtecciones implements ModInitializer {
             markDirty();
         }
 
+        public UUID getFlanClaimId() {
+            return flanClaimId;
+        }
+
+        public void setFlanClaimId(UUID claimId) {
+            this.flanClaimId = claimId;
+            markDirty();
+        }
+
         public boolean canBreak(PlayerEntity player) {
             return owner == null || owner.equals(player.getUuid()) || player.isCreative();
+        }
+
+        public boolean createFlanClaim(ServerWorld world, ServerPlayerEntity player) {
+            ProtectionTier tier = getTier();
+            int radius = tier.radius();
+
+            BlockPos from = new BlockPos(pos.getX() - radius, pos.getY(), pos.getZ() - radius);
+            BlockPos to = new BlockPos(pos.getX() + radius, pos.getY(), pos.getZ() + radius);
+
+            ClaimStorage storage = ClaimStorage.get(world);
+            Claim claim = storage.createAdminClaim(from, to, world, false);
+            if (claim == null) {
+                return false;
+            }
+
+            storage.transferOwner(claim, player.getUuid());
+            claim.setClaimName("Protección " + tier.displayName());
+            setFlanClaimId(claim.getClaimID());
+            return true;
+        }
+
+        public void removeFlanClaim(ServerWorld world) {
+            if (flanClaimId == null) {
+                return;
+            }
+
+            ClaimStorage storage = ClaimStorage.get(world);
+            Claim claim = storage.getFromUUID(flanClaimId);
+            if (claim != null) {
+                storage.deleteClaim(claim, true, ClaimMode.DEFAULT, world);
+            }
+            flanClaimId = null;
+            markDirty();
         }
 
         public void startPreview() {
@@ -175,16 +353,16 @@ public final class EmiProtecciones implements ModInitializer {
             }
 
             if (core.previewTicks % 10 == 0) {
-                spawnBoundary(serverWorld, pos);
+                spawnBoundary(serverWorld, pos, core.getTier().radius());
             }
             core.previewTicks--;
         }
 
-        private static void spawnBoundary(ServerWorld world, BlockPos center) {
-            final int radius = 10;
+        private static void spawnBoundary(ServerWorld world, BlockPos center, int radius) {
             final double y = center.getY() + 1.05;
+            final int step = Math.max(2, radius / 10);
 
-            for (int offset = -radius; offset <= radius; offset += 2) {
+            for (int offset = -radius; offset <= radius; offset += step) {
                 spawn(world, center.getX() + offset + 0.5, y, center.getZ() - radius + 0.5);
                 spawn(world, center.getX() + offset + 0.5, y, center.getZ() + radius + 0.5);
                 spawn(world, center.getX() - radius + 0.5, y, center.getZ() + offset + 0.5);
@@ -202,12 +380,16 @@ public final class EmiProtecciones implements ModInitializer {
             if (owner != null) {
                 nbt.putUuid("Owner", owner);
             }
+            if (flanClaimId != null) {
+                nbt.putUuid("FlanClaimId", flanClaimId);
+            }
         }
 
         @Override
         protected void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
             super.readNbt(nbt, registries);
             owner = nbt.containsUuid("Owner") ? nbt.getUuid("Owner") : null;
+            flanClaimId = nbt.containsUuid("FlanClaimId") ? nbt.getUuid("FlanClaimId") : null;
         }
 
         @Override
