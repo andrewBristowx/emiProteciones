@@ -24,10 +24,9 @@ dependencies {
     modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolib_version}"
 }
 
-def generatedAssets = [
-    "assets/emiprotecciones/geo/block/protection_core.geo.json.gz.b64": "H4sIAMDAd2oC/+3d3W6iQBQH8HufwnBtJwOCYF+lMcaPsSVZGQOD3d2m775gq4twuusHBfT8vWjKMAwMbfPLOZwyb71+31rpeD0z062Kk1BH1mPfsoXtCGkN8r3rMFKLeLYyj89Kr5WJf2U9nrI9/f7b7mvWZ6mSRRxuzMfh++ZsR7hUkQlXoYrzYfcDiE2sjVrk3acLHavdiT6PMOqnSWM1fQ2X5iU7yB4RO19U+Pxiynu3YRLOf6jpXKfRMjmMkM3k606Hkf7ZS69WiTKHeX98Cv2zDTE62jx8P/n87n2/25rrSCVHY70VjrSi2VrlNyvW2ljFMa1NuNXliyhdRnWzsDU5Gm2RzkuXUb6UXTcdh89hVOmXfx5GwhtUWiXVmHctNU7Kvawk/K3IE9nD6oijAdHtv6dIt0e/n39vuo53vyvVXfuDnog9lbu9/7hE62RAjz39ctq7kc44QaXtvXqwpWaJYTHRRKdMfqSvismPNN2wmOZSv0b3N9Hev7ZLt+EshXxCAkqgy/0hSSOabKdxgFwuALlsAHK5AOTyAMjlApDLEyAyCoJAEAgCQSAIBIG+PwQanQaQf0UKzjnJH3lCmg85OOTgkINDDg45OG4AXfcQqLsCIQRCCIQQCCEQQqBOCSTrzcFRAJF5OSThIBAEgkAQiJdAwveomMeh6+H8qwriTq68y7s2zlHAhaOADUcBF44CHhwFXDgKwNERR35THDnkqbrkkeTikWTjkeTikeThkeTikWRYpu2L2svkHBIi2YkkHZVAvE+GbnCmlzp0g1O9EKIbnOlFEt3gPC+kqOsz/b6KbSoygUbQCBpBI2gEjRrO1BFMjJt5jYLX5dcoSC4l3JJNCbfkUsIteZRwSy4l3Bzzc7Zs4L9Y3S4X0EkuBXSSTQGd5FJAJ3kU0EkuBXSS5XsUQBAIAkEgCASBoAZScScKVPObFNxOv0kBaTik4ZCGQxoOabjuCFT7qxTcTr9KAUEQgiAEQQiCEAS1RJBLlyPc59sUEAchDkIchDgIcVB7CA2FpB0aB3U/EaIpkgGeCiEgQkCEgAgBEfOASMIiWASLYBEsgkXtWuSIsQuKQBEoAkWgCBS1GRadERPl2by6nxVREuVqwSJYBItgESyCRZRFEhbBIlgEi2ARLGrXojybB4pAESgCRaAIFNVO0VBI6nGRIP+nVcjhNc+LKHg86kx5V6yQ17BGWCHv7jTCCnn3pZHLoI4OGkEjaASNoBE0ar2SbgSMgBEwAkbACBjVgFGPOrZwc4o3w4pm6/wqrXlqjI6s4mVZm1msovzPwYq1NqV94VabyvRKlvii9GzoIRDFJ0BH985apHOVVIY8M9FILJ7kkisq+cK94t1FI+EMTmuUwsNKs99mKVaaxUqzt2kpVpq98zSjkwFDYUSufO6L8eUYuWI8OK2xFYywxB+W+Lthj7DE372JxHaJP1uMPCoF6FEkZaHaFQHSUBDL/JGNbbzfFfER4iPEB+1iZHtUTk0SWPkXYGRQ7nj0BgNESAhQEKAhAAJAdKNmkQ//+oVW/KtSe/9DxZUHJ14wAAA",
-    "assets/emiprotecciones/textures/block/protection_core.png.b64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYElEQVR4nGM8oqP5nwEJ7HrzCZnLMJ+dHYUvJSuPwmdioBAMvAGMDx49QgmDs5evoSg4fPQYCr//jQ51XTDwBjCa2zj+f/b4IYOUrDwDOTQTJZqlZOUZmCjRPOoCKrkAAAbR0Tx0H5Y7AAAAAElFTkSuQmCC",
-    "assets/emiprotecciones/textures/item/protection_core.png.b64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlklEQVR4nGNgGGjAiMw5oqP5nxhNNleuw/UxoWu2DoskaACyRUzokkdXLSfGEXDAgk0w8vNPrIqX87JjiMH9IiuvhOJ/KVl5FIXPHj9E4T9+eI+RgQGLF5DBCa1MhhNamfiU4DeAGAD3woNHj+BesLV1wOqFw4cPwPkKcnKMDAxYAlFeVhaugWwXEANgLmBCFyBF8zABAFDyKbph3KI/AAAAAElFTkSuQmCC"
+def generatedImages = [
+    "assets/emiprotecciones/textures/block/protection_core.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYElEQVR4nGM8oqP5nwEJ7HrzCZnLMJ+dHYUvJSuPwmdioBAMvAGMDx49QgmDs5evoSg4fPQYCr//jQ51XTDwBjCa2zj+f/b4IYOUrDwDOTQTJZqlZOUZmCjRPOoCKrkAAAbR0Tx0H5Y7AAAAAElFTkSuQmCC",
+    "assets/emiprotecciones/textures/item/protection_core.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlklEQVR4nGNgGGjAiMw5oqP5nxhNNleuw/UxoWu2DoskaACyRUzokkdXLSfGEXDAgk0w8vNPrIqX87JjiMH9IiuvhOJ/KVl5FIXPHj9E4T9+eI+RgQGLF5DBCa1MhhNamfiU4DeAGAD3woNHj+BesLV1wOqFw4cPwPkKcnKMDAxYAlFeVhaugWwXEANgLmBCFyBF8zABAFDyKbph3KI/AAAAAElFTkSuQmCC"
 ]
 
 processResources {
@@ -38,22 +37,10 @@ processResources {
     }
 
     doLast {
-        generatedAssets.each { relative, encoded ->
-            def outputRelative = relative
-            byte[] bytes = java.util.Base64.getDecoder().decode(encoded)
-
-            if (relative.endsWith(".geo.json.gz.b64")) {
-                outputRelative = relative.substring(0, relative.length() - ".gz.b64".length())
-                def gzip = new java.util.zip.GZIPInputStream(new ByteArrayInputStream(bytes))
-                bytes = gzip.bytes
-                gzip.close()
-            } else if (relative.endsWith(".png.b64")) {
-                outputRelative = relative.substring(0, relative.length() - ".b64".length())
-            }
-
-            def out = new File(destinationDir, outputRelative)
+        generatedImages.each { relative, encoded ->
+            def out = new File(destinationDir, relative)
             out.parentFile.mkdirs()
-            out.bytes = bytes
+            out.bytes = java.util.Base64.getDecoder().decode(encoded)
         }
 
         def textAssets = [
