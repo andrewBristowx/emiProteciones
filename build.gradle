@@ -1,0 +1,148 @@
+plugins {
+    id "fabric-loom" version "1.10-SNAPSHOT"
+    id "maven-publish"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.fabricmc.net/" }
+    maven { url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/" }
+    maven { url = "https://api.modrinth.com/maven" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolib_version}"
+
+    // Flan is installed on the server; compile against its 1.21.1 API without bundling it.
+    modCompileOnly "maven.modrinth:Si383TIH:b5UMLaHO"
+
+    // LuckPerms is optional at runtime except for the exclusive Emi permission check.
+    compileOnly "net.luckperms:api:5.4"
+}
+
+def generatedImages = [
+    "assets/emiprotecciones/textures/block/protection_core.png": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAeklEQVR42mM8oqP5nwEJ7HrzCZnLMJ+dHYUvJSuPwj95ZD8jAwWAiWGAwagDGB88eoSSBs5evoai4PDRYyj8/jc6qAbMChtNA0M8DZjbOP5/9vghg5SsPAM59OOH9yhLA5RYjl4okeUASix/9vgh5Q4YDYHREBjoEAAAaGDXHroUIw4AAAAASUVORK5CYII=",
+    "assets/emiprotecciones/textures/item/protection_core.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXUlEQVR42mM8oqP5nwEJ7HrzCZnLMJ+dHYUvJSuPwmdioBAMvAGMDx49QgmDs5evoSg4fPQYCr//jc6wCwNzG8f/zx4/ZJCSlWcgh2aiRLOUrDwDEyWaR11AJRcAAAbR0Tyn6dBoAAAAAElFTkSuQmCC",
+    "assets/emiprotecciones/textures/block/protection_core_advanced.png": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAeklEQVR42mM0mXH7PwMSeLJ7IzKXgfXMNBS+lKw8Cv/kkf2MDBQAJoYBBqMOYHzw6BFKGjh7+RqKgsNHj6Hw+9/ooBowK2w0DQzxNGBu4/j/2eOHDFKy8gzk0I8f3qMsDVBiOXqhRJYDKLH82eOHlDtgNARGQ2CgQwAAYhjYHp/VgjgAAAAASUVORK5CYII=",
+    "assets/emiprotecciones/textures/item/protection_core_advanced.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXUlEQVR42mM0mXH7PwMSeLJ7IzKXgfXMNBS+lKw8Cp+JgUIw8AYwPnj0CCUMzl6+hqLg8NFjKPz+NzrDLgzMbRz/P3v8kEFKVp6BHJqJEs1SsvIMTJRoHnUBlVwAAABN0jyOuBRAAAAAAElFTkSuQmCC",
+    "assets/emiprotecciones/textures/block/protection_core_epic.png": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAeklEQVR42mNcFnDnPwMS2Hp9NTKX4dCP2Sh8KVl5FP7JI/sZGSgATAwDDEYdwGI1iQ1FgP2yIQpf9GgMCr//jQ4Kn/HI/tEoGNoOYDS3cfz/7PFDBilZeQZy6McP71FWDlBiOXqhRJYDKLH82eOHlDtgNARGQ2CgQwAAwNXUXw/Y9boAAAAASUVORK5CYII=",
+    "assets/emiprotecciones/textures/item/protection_core_epic.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXUlEQVR42mNcFnDnPwMS2Hp9NTKX4dCP2Sh8KVl5FD4TA4Vg4A1gfPDoEUoYnL18DUXB4aPHUPj9b3SGXRiY2zj+f/b4IYOUrDwDOTQTJZqlZOUZmCjRPOoCKrkAAPNK0zwJyqt9AAAAAElFTkSuQmCC",
+    "assets/emiprotecciones/textures/block/protection_core_legendary.png": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAeklEQVR42mP8tk/3PwMSWL7qPjKXoWG7GApfSlYehX/yyH5GBgoAE8MAg1EHsLxS2YoiIOB7DYUfLHQMhd//RgeFz3hk/2gUDG0HMJrbOP5/9vghg5SsPAM59OOH9ygrByixHL1QIssBlFj+7PFDyh0wGgKjITDQIQAAMdvUbTTA8gMAAAAASUVORK5CYII=",
+    "assets/emiprotecciones/textures/item/protection_core_legendary.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXUlEQVR42mP8tk/3PwMSWL7qPjKXoWG7GApfSlYehc/EQCEYeAMYHzx6hBIGZy9fQ1Fw+OgxFH7/G51hFwbmNo7/nz1+yCAlK89ADs1EiWYpWXkGJko0j7qASi4AAAeN0jzFL4IKAAAAAElFTkSuQmCC",
+    "assets/emiprotecciones/textures/block/protection_core_emi.png": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAA1ElEQVR42mP8EL37PwMSmH1lDzKXYdKH1Sh8KVl5FP7JI/sZleU0/t99dIMRWRybGDbAxEAhUJbT+E+OHAywMFABXD93noGBgQHDMk0jQwaahwAMsNYex8omGAIf2tVRBJQu/0XhBx9lR+H3v9FB4as8qmNgYGBg+N1sCfcxNESIcwADFQEpFlMtCu4+usGILa41jQwZiMkFVAkBqCP+o4sRo5fR3Mbx/7PHDxmkZOUZyKEfP7zHSInjmSixHL1QIssBlFj+7PFDyh0wGgKjITDQIQAA+Vj7kDoJbpsAAAAASUVORK5CYII=",
+    "assets/emiprotecciones/textures/item/protection_core_emi.png": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtElEQVR42mP8EL37PwMSmH1lDzKXYdKH1Sh8KVl5FD4TA4Vg4A1g+dCujiKgdPkvCj/4KDsKv/+NznALA0ZzG8f/zx4/ZJCSlWcgh2aiRLOUrDzxLmD7z8bwi/EXBp9RVl7pPzE2vXn0nIGBgYHhF+MvBrb/bAwMDAwMInKSDEzEOpeBgYHh+rnzDI+85jBcP3eegYGBgeHZ44fEuwDmbBiAeYeJlAD7xfiLQUROEiUsKI4FAFekxyy0eDptAAAAAElFTkSuQmCC"
+]
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+
+    doLast {
+        generatedImages.each { relative, encoded ->
+            def out = new File(destinationDir, relative)
+            out.parentFile.mkdirs()
+            out.bytes = java.util.Base64.getDecoder().decode(encoded)
+        }
+
+        def tierAssets = [
+            "protection_core",
+            "protection_core_advanced",
+            "protection_core_epic",
+            "protection_core_legendary",
+            "protection_core_emi"
+        ]
+
+        tierAssets.each { name ->
+            def blockstate = new File(destinationDir, "assets/emiprotecciones/blockstates/${name}.json")
+            blockstate.parentFile.mkdirs()
+            blockstate.text = '{"variants":{"":{"model":"emiprotecciones:block/' + name + '"}}}'
+
+            def blockModel = new File(destinationDir, "assets/emiprotecciones/models/block/${name}.json")
+            blockModel.parentFile.mkdirs()
+            blockModel.text = '{"parent":"minecraft:block/block","textures":{"particle":"emiprotecciones:block/' + name + '"}}'
+
+            def itemModel = new File(destinationDir, "assets/emiprotecciones/models/item/${name}.json")
+            itemModel.parentFile.mkdirs()
+            itemModel.text = '{"parent":"minecraft:item/generated","textures":{"layer0":"emiprotecciones:item/' + name + '"}}'
+
+            def loot = new File(destinationDir, "data/emiprotecciones/loot_table/blocks/${name}.json")
+            loot.parentFile.mkdirs()
+            loot.text = '{"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"emiprotecciones:' + name + '"}],"conditions":[{"condition":"minecraft:survives_explosion"}]}]}'
+        }
+
+        def textAssets = [
+            "assets/emiprotecciones/animations/block/protection_core.animation.json": """{
+              "format_version": "1.8.0",
+              "animations": {
+                "animation.protection_core.idle": {
+                  "loop": true,
+                  "animation_length": 2.0,
+                  "bones": {
+                    "button": {
+                      "scale": {
+                        "0.0": [1.0, 1.0, 1.0],
+                        "1.0": [1.035, 1.035, 1.035],
+                        "2.0": [1.0, 1.0, 1.0]
+                      }
+                    }
+                  }
+                }
+              }
+            }""",
+            "assets/emiprotecciones/lang/es_es.json": """{
+              "block.emiprotecciones.protection_core":"Núcleo de Protección Básico",
+              "item.emiprotecciones.protection_core":"Núcleo de Protección Básico",
+              "block.emiprotecciones.protection_core_advanced":"Núcleo de Protección Avanzado",
+              "item.emiprotecciones.protection_core_advanced":"Núcleo de Protección Avanzado",
+              "block.emiprotecciones.protection_core_epic":"Núcleo de Protección Épico",
+              "item.emiprotecciones.protection_core_epic":"Núcleo de Protección Épico",
+              "block.emiprotecciones.protection_core_legendary":"Núcleo de Protección Legendario",
+              "item.emiprotecciones.protection_core_legendary":"Núcleo de Protección Legendario",
+              "block.emiprotecciones.protection_core_emi":"Núcleo de Protección Emi",
+              "item.emiprotecciones.protection_core_emi":"Núcleo de Protección Emi"
+            }""",
+            "assets/emiprotecciones/lang/en_us.json": """{
+              "block.emiprotecciones.protection_core":"Basic Protection Core",
+              "item.emiprotecciones.protection_core":"Basic Protection Core",
+              "block.emiprotecciones.protection_core_advanced":"Advanced Protection Core",
+              "item.emiprotecciones.protection_core_advanced":"Advanced Protection Core",
+              "block.emiprotecciones.protection_core_epic":"Epic Protection Core",
+              "item.emiprotecciones.protection_core_epic":"Epic Protection Core",
+              "block.emiprotecciones.protection_core_legendary":"Legendary Protection Core",
+              "item.emiprotecciones.protection_core_legendary":"Legendary Protection Core",
+              "block.emiprotecciones.protection_core_emi":"Emi Protection Core",
+              "item.emiprotecciones.protection_core_emi":"Emi Protection Core"
+            }"""
+        ]
+
+        textAssets.each { relative, text ->
+            def out = new File(destinationDir, relative)
+            out.parentFile.mkdirs()
+            out.text = text
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
