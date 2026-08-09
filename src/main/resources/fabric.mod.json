@@ -11,7 +11,10 @@
   "license": "ARR",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.emiprotecciones.EmiProtecciones"],
+    "main": [
+      "com.emiprotecciones.EmiProtecciones",
+      "com.emiprotecciones.ManagementCommandCompat"
+    ],
     "client": ["com.emiprotecciones.EmiProteccionesClient"]
   },
   "depends": {
