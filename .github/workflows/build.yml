@@ -34,7 +34,7 @@ jobs:
       - name: Upload playable jar
         uses: actions/upload-artifact@v4
         with:
-          name: EmiProtecciones-0.1.0-alpha.2
+          name: EmiProtecciones-0.1.0-alpha.3
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
