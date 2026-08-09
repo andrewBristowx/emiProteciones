@@ -12,7 +12,7 @@
   "environment": "*",
   "entrypoints": {
     "main": ["com.emiprotecciones.EmiProtecciones"],
-    "client": ["com.emiprotecciones.EmiProtecciones$Client"]
+    "client": ["com.emiprotecciones.EmiProteccionesClient"]
   },
   "depends": {
     "fabricloader": ">=0.16.14",
