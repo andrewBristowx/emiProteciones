@@ -3,7 +3,7 @@
   "id": "emiprotecciones",
   "version": "${version}",
   "name": "EmiProtecciones",
-  "description": "Protecciones visuales para Cobbleverse usando un núcleo 3D GeckoLib.",
+  "description": "Protecciones visuales para Cobbleverse con núcleos 3D GeckoLib y claims administrados por Flan.",
   "authors": ["Emi / Pony0n"],
   "contact": {
     "sources": "https://github.com/andrewBristowx/emiProteciones"
@@ -19,6 +19,10 @@
     "minecraft": "~1.21.1",
     "java": ">=21",
     "fabric-api": "*",
-    "geckolib": ">=4.9.2"
+    "geckolib": ">=4.8.2",
+    "flan": "*"
+  },
+  "suggests": {
+    "luckperms": "*"
   }
 }
