@@ -10,8 +10,6 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.Locale;
-
 /**
  * Lightweight client GUI for the common protection actions.
  *
@@ -197,6 +195,18 @@ public final class ProtectionScreen extends Screen {
     private void setFeedback(String feedback, int color) {
         this.feedback = feedback;
         this.feedbackColor = color;
+    }
+
+    /**
+     * Minecraft 1.21.x applies its vanilla blur/dim layer from Screen before
+     * rendering widgets. Our panel is already drawing its own dark overlay, so
+     * the vanilla pass only blurs the custom labels/panel that were drawn first.
+     * Disabling it keeps the world dimmed by EmiUiTheme.OVERLAY while all GUI
+     * text remains perfectly sharp.
+     */
+    @Override
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Intentionally empty: ProtectionScreen renders its own themed backdrop.
     }
 
     @Override
