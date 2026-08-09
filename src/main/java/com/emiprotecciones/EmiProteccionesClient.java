@@ -1,8 +1,12 @@
 package com.emiprotecciones;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import software.bernie.geckolib.model.DefaultedBlockGeoModel;
 import software.bernie.geckolib.renderer.GeoBlockRenderer;
 
@@ -13,6 +17,17 @@ public final class EmiProteccionesClient implements ClientModInitializer {
                 EmiProtecciones.PROTECTION_CORE_BLOCK_ENTITY,
                 context -> new ProtectionCoreRenderer()
         );
+
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            BlockPos pos = hitResult.getBlockPos();
+            if (world.getBlockState(pos).getBlock() instanceof EmiProtecciones.ProtectionCoreBlock) {
+                MinecraftClient.getInstance().setScreen(
+                        new ProtectionScreen(pos, EmiProtecciones.tierOf(world.getBlockState(pos).getBlock()))
+                );
+                return ActionResult.SUCCESS;
+            }
+            return ActionResult.PASS;
+        });
     }
 
     public static final class ProtectionCoreModel
