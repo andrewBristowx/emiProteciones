@@ -1,7 +1,6 @@
 package com.emiprotecciones;
 
 import com.mojang.serialization.MapCodec;
-import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.block.AbstractBlock;
@@ -11,7 +10,6 @@ import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
@@ -33,8 +31,6 @@ import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.model.DefaultedBlockGeoModel;
-import software.bernie.geckolib.renderer.GeoBlockRenderer;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
@@ -76,16 +72,6 @@ public final class EmiProtecciones implements ModInitializer {
             }
             return true;
         });
-    }
-
-    public static final class Client implements ClientModInitializer {
-        @Override
-        public void onInitializeClient() {
-            BlockEntityRendererFactories.register(
-                    PROTECTION_CORE_BLOCK_ENTITY,
-                    context -> new ProtectionCoreRenderer()
-            );
-        }
     }
 
     public static final class ProtectionCoreBlock extends BlockWithEntity {
@@ -232,18 +218,6 @@ public final class EmiProtecciones implements ModInitializer {
         @Override
         public AnimatableInstanceCache getAnimatableInstanceCache() {
             return cache;
-        }
-    }
-
-    public static final class ProtectionCoreModel extends DefaultedBlockGeoModel<ProtectionCoreBlockEntity> {
-        public ProtectionCoreModel() {
-            super(Identifier.of(MOD_ID, "protection_core"));
-        }
-    }
-
-    public static final class ProtectionCoreRenderer extends GeoBlockRenderer<ProtectionCoreBlockEntity> {
-        public ProtectionCoreRenderer() {
-            super(new ProtectionCoreModel());
         }
     }
 }
